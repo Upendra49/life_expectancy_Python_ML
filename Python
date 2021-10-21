@@ -1,0 +1,417 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+#Data Programming Project
+
+#WHO Life expectancy
+
+
+# In[5]:
+
+
+#import pandas, numpy and matlab
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from sklearn.linear_model import Ridge, RidgeCV, Lasso, LassoCV
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import cross_val_score
+import scipy
+from scipy import stats
+from scipy.stats.mstats import winsorize
+import seaborn as sns
+
+
+# In[2]:
+
+
+#read sourcefile
+
+liexp = pd.read_csv("Life Expectancy Data.csv")
+liexp.head()
+
+
+# In[4]:
+
+
+#datatypes
+liexp.dtypes
+
+
+# In[5]:
+
+
+#Dataset Info
+
+liexp.info() 
+
+
+# In[6]:
+
+
+
+#dataset dimensions
+
+print("Number of rows in dataset is {}" .format(liexp.shape[0]))
+print("Number of columns in dataset is {}" .format(liexp.shape[1]))
+print(liexp.shape)
+
+
+# In[7]:
+
+
+# columns in the dataset
+
+liexp.columns
+
+
+# In[3]:
+
+
+#We can observe some spaces in the column names, so we can standardize/normalize.
+liexp.rename(columns={'Life expectancy ':'Life_Expectancy', 'Adult Mortality':'Adult_Mortality','infant deaths':'Infant_Deaths','percentage expenditure':'Percentage_Exp', 'Hepatitis B':'Hepatitis_B', 'Measles ':'Measles', ' BMI ':'BMI',
+                          'under-five deaths ':'under_five_deaths', 'Total expenditure':'Total_Exp','Diphtheria ':'Diphtheria', ' HIV/AIDS':'HIV/AIDS',
+                          ' thinness  1-19 years':'thinness_1_to_19', ' thinness 5-9 years':'thinness_5_to_9', 'Income composition of resources':'Income_Composition'}, inplace=True)
+
+
+# In[4]:
+
+
+#Null values 
+
+#number of null values
+liexp.isna().sum()
+
+
+# In[10]:
+
+
+#finding the correlation between the columns
+liexpcor=liexp.drop(['Country','Year','Status'], axis=1)
+liexpcor.corr()
+
+
+# In[11]:
+
+
+#plotting a heatmap using seaborne for illustrating the correlation
+import seaborn as sns
+plt.figure(figsize=(22,22))
+sns.heatmap(liexpcor.corr(),annot=True,cmap="coolwarm")
+plt.title("Heatmap for Correlation",size=30)
+plt.show()
+
+
+# In[12]:
+
+
+#providing insights on the correaltion
+print("Features like Adult_Mortality,HIV/AIDS and Income_composition have an high impact on the target variable('Life Expectancy').")
+print("There are other features that are correlated to each other such as:")
+print("1. Infant_Deaths and under_five_deaths('1')")
+print("2. Diptheria and Polio ('0.67')")
+print("3. Income_composition and Schooling('0.8')")
+print("4. GDP and Percentage_Exp('0.9')")
+print("5. thinness_1_to_19 and thinness_5_to_9('0.9')")
+
+
+# In[13]:
+
+
+#sns pairplot to show correlation
+sns.pairplot(liexpcor)
+
+
+# <font20><b>The plots indicates the correlation between features as explained in the heatmap</b>
+
+# In[14]:
+
+
+#plotting a heatmap for null values in the features
+plt.figure(figsize=(10,15))
+sns.heatmap(liexpcor.isnull(),annot=True,cmap="coolwarm")
+
+
+# In[15]:
+
+
+#plot relationship between each feature and Life expectancy
+plt.figure(figsize=(20,40))
+for i in range(1,18):
+    plt.subplot(6,3,i)
+    sns.regplot(x=liexpcor.columns[i+1],y='Life_Expectancy',data=liexpcor)
+
+
+# In[6]:
+
+
+#filling the null values with mean
+liexp=liexp.fillna(liexp.mean())
+
+
+# In[7]:
+
+
+liexp.isna().sum()
+
+
+# In[18]:
+
+
+#analyzing life expectancy for developed and developing countries
+plt.figure(figsize=(15, 8))
+plt.subplot(1,2,1)
+liexp.Status.value_counts().plot(kind='pie', autopct='%.2f')
+plt.title('Country Status Pie Chart')
+plt.show()
+plt.subplot(1,2,2)
+sns.barplot(x="Status", y="Life_Expectancy", data=liexp)
+plt.title("Country Status vs. Life Expectancy")
+plt.show()
+
+
+# In[8]:
+
+
+# Converting Categorial values such as country,Year and status into Numerical values
+from sklearn.preprocessing import LabelEncoder,OneHotEncoder
+liexp['Country']=LabelEncoder().fit_transform(liexp['Country'])
+liexp['Year']=LabelEncoder().fit_transform(liexp['Year'])
+liexp['Status']=LabelEncoder().fit_transform(liexp['Status'])
+liexp.head()
+
+
+# In[9]:
+
+
+#detecting Outliers
+col_dict = {'Life_Expectancy':1,
+            'Adult_Mortality':2,
+            'Infant_Deaths':3,
+            'Alcohol':4,
+            'Percentage_Exp':5,
+            'Hepatitis_B':6,
+            'Measles':7,
+            'BMI':8,
+            'under_five_deaths':9,
+            'Polio':10,
+            'Total_Exp':11,
+            'Diphtheria':12,
+            'HIV/AIDS':13,
+            'GDP':14,
+            'Population':15,
+            'thinness_1_to_19':16,
+            'thinness_5_to_9':17,
+            'Income_Composition':18,
+            'Schooling':19}
+
+plt.figure(figsize=(20,30))
+for col, i in col_dict.items():
+    plt.subplot(4,5,i)
+    sns.boxplot(liexp[col]).set(xlabel=None)
+    plt.title(col)
+plt.show()
+
+
+# In[13]:
+
+
+for column in liexp.columns:
+    if liexp[column].quantile(.9973)<liexp[column].max():
+        print(column)
+        print('99th Percentile:',liexp[column].quantile(.9973))
+        print('Max Value:',liexp[column].max())
+        print('Outliers are present in the Column - {}'.format(column))
+        print('')
+    elif liexp[column].quantile(0)>liexp[column].min():
+        print(column)
+        print('0th Percentile:',liexp[column].quantile(.9973))
+        print('Min value:',liexp[column].min())
+        print('Outliers are present in the Column- {}'.format(column))
+        print('')
+
+
+# In[16]:
+
+
+liexp_clean=liexp.copy()
+cols= ['Adult_Mortality','Infant_Deaths','Percentage_Exp','Hepatitis_B','Measles','BMI',
+                          'under_five_deaths','Total_Exp','Diphtheria','HIV/AIDS',
+                          'thinness_1_to_19','thinness_5_to_9', 'Income_Composition']
+
+
+# In[20]:
+
+
+#Capping the outliers
+def capping(df,columns,lower_lim,upper_lim):
+    for col in columns:
+        stats.mstats.winsorize(a=df[col],limits=(lower_lim,upper_lim),inplace=True)
+
+
+# In[21]:
+
+
+capping(liexp_clean,cols,0.0027,0.0027)
+
+
+# In[24]:
+
+
+#cheacking outliers after cleaning
+plt.figure(figsize=(20,30))
+for col, i in col_dict.items():
+    plt.subplot(4,5,i)
+    sns.boxplot(liexp_clean[col]).set(xlabel=None)
+    plt.title(col)
+plt.show()
+
+
+# In[25]:
+
+
+#Preparing the data for split,X->as the predictors and y as the target variable
+
+X=liexp_clean.drop('Life_Expectancy',axis=1)
+y=liexp_clean['Life_Expectancy']
+
+
+# In[26]:
+
+
+# Splitting the data into Train and Test data into 80% and 20%
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=101)
+
+
+# In[27]:
+
+
+print("The number of entries in X_train data:",X_train.shape)
+print("The number of entries in y_train data:",y_train.shape)
+print("The number of entries in X_test data:",X_test.shape)
+print("The number of entries in y_train data:",y_test.shape)
+
+
+# In[28]:
+
+
+# Put models in a dictionary
+models = { "Linear Regression": LinearRegression(), 
+           "Random Forest": RandomForestRegressor(),
+           "Decision tree": DecisionTreeRegressor(),
+          "ADA Boost" :AdaBoostRegressor()
+
+            #"KNN" : KNeighborsClassifier(n)
+}
+
+# Create function to fit and score models
+def fit_and_score(models, X_train, X_test, y_train, y_test):
+    #Fits and evaluates given machine learning models.
+
+    np.random.seed(101)
+    # Make a list to keep model scores
+    model_scores = {}
+    # Loop through models
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        model_scores[name] = model.score(X_test, y_test)
+    return model_scores
+
+
+# In[29]:
+
+
+# Evaluate the Model Scores
+Score = fit_and_score(models=models,
+                             X_train=X_train,
+                             X_test=X_test,
+                             y_train=y_train,
+                             y_test=y_test)
+Score
+
+
+# In[31]:
+
+
+
+model_compare = pd.DataFrame(Score, index=['score'])
+model_compare.T.plot.bar();
+
+
+# In[30]:
+
+
+# Most ideal hyperparamters
+ideal_model = RandomForestRegressor()
+
+# Fit the ideal model
+ideal_model.fit(X_train, y_train)
+
+ideal_model.score(X_test, y_test)
+
+
+# In[31]:
+
+
+fin_predict_train = ideal_model.predict(X_train)
+fin_predict_test = ideal_model.predict(X_test)
+
+print("Mean squared error: ", mean_squared_error(y_test, fin_predict_test))
+print("Mean absolute error: ",  mean_absolute_error(y_test, fin_predict_test))
+print("R_square score: ", r2_score(y_test, fin_predict_test))
+
+
+# In[32]:
+
+
+fin_predict_test
+
+
+# In[33]:
+
+
+y_test
+
+
+# In[34]:
+
+
+
+# Find feature importance of our best model
+ideal_model.feature_importances_
+
+
+# In[35]:
+
+
+# Function for plotting feature importance
+def plot_features(columns, importances):
+    df = (pd.DataFrame({"features": columns,
+                        "feature_importances": importances})
+          .sort_values("feature_importances", ascending=False)
+          .reset_index(drop=True))
+    
+    # Plot the dataframe
+    fig, ax = plt.subplots()
+    ax.barh(df["features"], df["feature_importances"])
+    ax.set_ylabel("Features")
+    ax.set_xlabel("Feature importance")
+    ax.invert_yaxis()
+
+
+# In[45]:
+
+
+plot_features(X_train.columns, ideal_model.feature_importances_)
+
