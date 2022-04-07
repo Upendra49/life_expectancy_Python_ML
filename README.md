@@ -1,1 +1,1 @@
-# life_expectancy
+Objective is to identify the sectors which would have an impact on the average life expectancy of a country. Furthermore, the model would be able to predict the life expectancy based on any new changes that the country decides to implement. Algorithms: Linear Regression, Decision Trees & Random Forest
